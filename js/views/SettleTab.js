@@ -2,9 +2,13 @@ import { escapeHtml, formatCurrency, formatDateTime } from '../utils/helpers.js'
 import Snackbar from '../utils/Snackbar.js';
 
 export const SettleTab = {
+  _controller: null,
+
   mount(container, group, svc) {
+    this._controller?.abort();
+    this._controller = new AbortController();
     container.innerHTML = this._getHTML(group, svc);
-    this._bind(container, group, svc);
+    this._bind(container, group, svc, this._controller.signal);
   },
 
   _getHTML(group, svc) {
@@ -120,7 +124,7 @@ export const SettleTab = {
     `;
   },
 
-  _bind(container, group, svc) {
+  _bind(container, group, svc, signal) {
     container.addEventListener('click', e => {
       const btn = e.target.closest('.js-mark-paid');
       if (!btn) return;
@@ -136,6 +140,6 @@ export const SettleTab = {
         `${escapeHtml(fromName)} paid ${escapeHtml(toName)} ${formatCurrency(parsedAmount, group.symbol)}`,
         () => svc.undoSettlement(group.id, settlement.id)
       );
-    });
+    }, { signal });
   },
 };

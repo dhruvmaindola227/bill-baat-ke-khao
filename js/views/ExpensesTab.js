@@ -3,9 +3,13 @@ import Modal from '../utils/Modal.js';
 import Toast from '../utils/Toast.js';
 
 export const ExpensesTab = {
+  _controller: null,
+
   mount(container, group, svc, router) {
+    this._controller?.abort();
+    this._controller = new AbortController();
     container.innerHTML = this._getHTML(group);
-    this._bind(container, group, svc, router);
+    this._bind(container, group, svc, router, this._controller.signal);
   },
 
   _getHTML(group) {
@@ -176,7 +180,7 @@ export const ExpensesTab = {
 
   // ── Event binding ─────────────────────────────────────────────────────────
 
-  _bind(container, group, svc, router) {
+  _bind(container, group, svc, router, signal) {
     container.addEventListener('click', async e => {
       if (e.target.closest('#btn-add-expense')) {
         this._openExpenseModal(group, svc, null);
@@ -201,6 +205,6 @@ export const ExpensesTab = {
           Toast.show('Expense deleted.', 'info');
         }
       }
-    });
+    }, { signal });
   },
 };

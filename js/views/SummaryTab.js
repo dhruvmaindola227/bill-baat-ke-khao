@@ -1,9 +1,13 @@
 import { escapeHtml, formatCurrency, formatDate, formatDateTime, round2 } from '../utils/helpers.js';
 
 export const SummaryTab = {
+  _controller: null,
+
   mount(container, group, svc) {
+    this._controller?.abort();
+    this._controller = new AbortController();
     container.innerHTML = this._getHTML(group, svc);
-    this._bind(container, group);
+    this._bind(container, group, this._controller.signal);
   },
 
   _getHTML(group, svc) {
@@ -112,10 +116,9 @@ export const SummaryTab = {
     `;
   },
 
-  _bind(container, group) {
-    container.querySelector('#btn-export-csv')?.addEventListener('click', () => {
-      this._downloadCSV(group);
-    });
+  _bind(container, group, signal) {
+    container.querySelector('#btn-export-csv')
+      ?.addEventListener('click', () => this._downloadCSV(group), { signal });
   },
 
   _downloadCSV(group) {
