@@ -1,7 +1,7 @@
 import StorageService from './StorageService.js';
 import { createGroup, createPerson, createExpense } from './models.js';
 import EventBus from './utils/EventBus.js';
-import { round2 } from './utils/helpers.js';
+import { round2, generateId } from './utils/helpers.js';
 
 const AppService = {
   _data: null,
@@ -131,12 +131,37 @@ const AppService = {
     this._save();
   },
 
+  // ── Settlements ───────────────────────────────────────────────────────────
+
+  recordSettlement(groupId, { from, fromName, to, toName, amount }) {
+    const group = this.getGroup(groupId);
+    if (!group) throw new Error('Group not found.');
+    if (!group.settlements) group.settlements = [];
+    const settlement = {
+      id: generateId('s'),
+      from, fromName, to, toName,
+      amount,
+      settledAt: new Date().toISOString(),
+    };
+    group.settlements.push(settlement);
+    this._save();
+    return settlement;
+  },
+
+  undoSettlement(groupId, settlementId) {
+    const group = this.getGroup(groupId);
+    if (!group) throw new Error('Group not found.');
+    group.settlements = (group.settlements ?? []).filter(s => s.id !== settlementId);
+    this._save();
+  },
+
   // ── Settlement Algorithm ─────────────────────────────────────────────────
 
   /**
    * Returns { balances: Map<personId, number>, transactions: Array }
    * Positive balance = others owe this person.
    * Negative balance = this person owes others.
+   * Recorded settlements are factored into balances before computing suggestions.
    * Uses greedy algorithm to minimise number of transactions.
    */
   calculateSettlement(group) {
@@ -148,6 +173,12 @@ const AppService = {
       for (const pid of expense.splitBetween) {
         balances.set(pid, round2((balances.get(pid) ?? 0) - share));
       }
+    }
+
+    // Recorded settlements adjust balances: payer's debt shrinks, receiver's credit shrinks
+    for (const s of (group.settlements ?? [])) {
+      balances.set(s.from, round2((balances.get(s.from) ?? 0) + s.amount));
+      balances.set(s.to,   round2((balances.get(s.to)   ?? 0) - s.amount));
     }
 
     const personMap = new Map(group.people.map(p => [p.id, p]));

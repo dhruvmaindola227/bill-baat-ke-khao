@@ -9,6 +9,7 @@ export function createGroup({ name, currency, symbol }) {
     createdAt: new Date().toISOString(),
     people: [],
     expenses: [],
+    settlements: [],
   };
 }
 

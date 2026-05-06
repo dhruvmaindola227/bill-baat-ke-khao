@@ -1,8 +1,10 @@
-import { escapeHtml, formatCurrency } from '../utils/helpers.js';
+import { escapeHtml, formatCurrency, formatDateTime } from '../utils/helpers.js';
+import Snackbar from '../utils/Snackbar.js';
 
 export const SettleTab = {
   mount(container, group, svc) {
     container.innerHTML = this._getHTML(group, svc);
+    this._bind(container, group, svc);
   },
 
   _getHTML(group, svc) {
@@ -14,53 +16,126 @@ export const SettleTab = {
     }
 
     const { balances, transactions } = svc.calculateSettlement(group);
-    const personMap = new Map(group.people.map(p => [p.id, p.name]));
+    const settlements = group.settlements ?? [];
 
-    const balanceCards = group.people.map(p => {
-      const bal = balances.get(p.id) ?? 0;
-      const rounded = Math.round(bal * 100) / 100;
-      let cls, label;
-      if (rounded > 0.01) {
+    return `
+      <div class="tab-panel-inner">
+        ${this._balanceSection(group, balances)}
+        ${this._pendingSection(transactions, group)}
+        ${settlements.length > 0 ? this._settledSection(settlements, group) : ''}
+      </div>
+    `;
+  },
+
+  _balanceSection(group, balances) {
+    const cards = group.people.map(p => {
+      const bal = Math.round((balances.get(p.id) ?? 0) * 100) / 100;
+      let cls, label, amtStr;
+      if (bal > 0.01) {
         cls = 'balance-positive';
-        label = `gets back ${formatCurrency(rounded, group.symbol)}`;
-      } else if (rounded < -0.01) {
+        label = 'gets back';
+        amtStr = `+${formatCurrency(bal, group.symbol)}`;
+      } else if (bal < -0.01) {
         cls = 'balance-negative';
-        label = `owes ${formatCurrency(-rounded, group.symbol)}`;
+        label = 'owes';
+        amtStr = formatCurrency(-bal, group.symbol);
       } else {
         cls = 'balance-zero';
         label = 'settled up';
+        amtStr = formatCurrency(0, group.symbol);
       }
       return `
         <div class="balance-card ${cls}">
           <span class="balance-name">${escapeHtml(p.name)}</span>
           <span class="balance-label">${label}</span>
-          <span class="balance-amount ${cls}">${rounded >= 0 ? '+' : ''}${formatCurrency(rounded, group.symbol)}</span>
+          <span class="balance-amount ${cls}">${escapeHtml(amtStr)}</span>
         </div>
       `;
     }).join('');
 
-    const paymentRows = transactions.length === 0
-      ? `<p class="settled-message">Everyone is settled up!</p>`
+    return `
+      <section class="settle-section">
+        <h3 class="settle-section-title">Balances</h3>
+        <div class="balance-grid">${cards}</div>
+      </section>
+    `;
+  },
+
+  _pendingSection(transactions, group) {
+    const rows = transactions.length === 0
+      ? `<p class="settled-message">All payments settled up!</p>`
       : transactions.map(t => `
-          <div class="payment-row">
-            <span class="payment-from">${escapeHtml(t.fromName)}</span>
-            <span class="payment-arrow">→</span>
-            <span class="payment-to">${escapeHtml(t.toName)}</span>
-            <span class="payment-amount">${formatCurrency(t.amount, group.symbol)}</span>
+          <div class="payment-row payment-pending" data-from="${escapeHtml(t.from)}"
+               data-to="${escapeHtml(t.to)}" data-amount="${t.amount}"
+               data-from-name="${escapeHtml(t.fromName)}" data-to-name="${escapeHtml(t.toName)}">
+            <div class="payment-info">
+              <span class="payment-from">${escapeHtml(t.fromName)}</span>
+              <span class="payment-arrow">→</span>
+              <span class="payment-to">${escapeHtml(t.toName)}</span>
+            </div>
+            <div class="payment-row-right">
+              <span class="payment-amount">${formatCurrency(t.amount, group.symbol)}</span>
+              <button class="btn btn-sm btn-settle js-mark-paid"
+                      data-from="${escapeHtml(t.from)}"
+                      data-to="${escapeHtml(t.to)}"
+                      data-amount="${t.amount}"
+                      data-from-name="${escapeHtml(t.fromName)}"
+                      data-to-name="${escapeHtml(t.toName)}"
+                      aria-label="Mark ${escapeHtml(t.fromName)} paid ${escapeHtml(t.toName)}">
+                ✓ Mark as Paid
+              </button>
+            </div>
           </div>
         `).join('');
 
     return `
-      <div class="tab-panel-inner">
-        <section class="settle-section">
-          <h3 class="settle-section-title">Balances</h3>
-          <div class="balance-grid">${balanceCards}</div>
-        </section>
-        <section class="settle-section">
-          <h3 class="settle-section-title">Suggested Payments</h3>
-          <div class="payments-list">${paymentRows}</div>
-        </section>
-      </div>
+      <section class="settle-section">
+        <h3 class="settle-section-title">Pending Payments</h3>
+        <div class="payments-list">${rows}</div>
+      </section>
     `;
+  },
+
+  _settledSection(settlements, group) {
+    const rows = [...settlements].reverse().map(s => `
+      <div class="payment-row payment-settled">
+        <div class="payment-info">
+          <span class="settled-check">✓</span>
+          <span class="payment-from payment-settled-name">${escapeHtml(s.fromName)}</span>
+          <span class="payment-arrow">paid</span>
+          <span class="payment-to payment-settled-name">${escapeHtml(s.toName)}</span>
+        </div>
+        <div class="payment-row-right">
+          <span class="payment-amount payment-settled-amount">${formatCurrency(s.amount, group.symbol)}</span>
+          <span class="settled-date">${formatDateTime(s.settledAt)}</span>
+        </div>
+      </div>
+    `).join('');
+
+    return `
+      <section class="settle-section">
+        <h3 class="settle-section-title">Settled Payments</h3>
+        <div class="payments-list">${rows}</div>
+      </section>
+    `;
+  },
+
+  _bind(container, group, svc) {
+    container.addEventListener('click', e => {
+      const btn = e.target.closest('.js-mark-paid');
+      if (!btn) return;
+
+      const { from, to, amount, fromName, toName } = btn.dataset;
+      const parsedAmount = parseFloat(amount);
+
+      const settlement = svc.recordSettlement(group.id, {
+        from, fromName, to, toName, amount: parsedAmount,
+      });
+
+      Snackbar.show(
+        `${escapeHtml(fromName)} paid ${escapeHtml(toName)} ${formatCurrency(parsedAmount, group.symbol)}`,
+        () => svc.undoSettlement(group.id, settlement.id)
+      );
+    });
   },
 };

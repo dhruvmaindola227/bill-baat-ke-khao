@@ -562,22 +562,108 @@ input:focus, select:focus, textarea:focus {
 .balance-amount.balance-zero     { color: var(--clr-text-muted); }
 
 .payments-list { display: flex; flex-direction: column; gap: .6rem; }
+
 .payment-row {
-  display: flex; align-items: center; gap: .75rem;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: .75rem;
   background: var(--clr-surface);
   border: 1.5px solid var(--clr-border);
   border-radius: var(--radius-md);
   padding: .85rem 1.1rem;
   flex-wrap: wrap;
+  transition: border-color .15s, box-shadow .15s;
 }
+.payment-info { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.payment-row-right { display: flex; align-items: center; gap: .75rem; flex-shrink: 0; }
+
+/* Pending payment row — subtle amber left border */
+.payment-pending {
+  border-left: 3px solid var(--clr-warning);
+}
+.payment-pending:hover { box-shadow: var(--shadow-sm); border-color: var(--clr-warning); }
+
+/* Settled payment row — green left border, muted */
+.payment-settled {
+  border-left: 3px solid var(--clr-success);
+  background: var(--clr-success-bg);
+  opacity: .85;
+}
+.payment-settled-name { color: var(--clr-text-muted); font-weight: 600; }
+.payment-settled-amount { color: var(--clr-success); font-weight: 700; }
+.settled-date { font-size: .75rem; color: var(--clr-text-light); }
+.settled-check { color: var(--clr-success); font-size: 1rem; font-weight: 800; }
+
 .payment-from, .payment-to { font-weight: 700; font-size: .95rem; }
-.payment-arrow { color: var(--clr-text-muted); font-size: 1.1rem; }
-.payment-amount {
-  margin-left: auto;
-  font-weight: 800; font-size: 1rem;
-  color: var(--clr-primary);
+.payment-arrow { color: var(--clr-text-muted); font-size: .9rem; }
+.payment-amount { font-weight: 800; font-size: 1rem; color: var(--clr-primary); }
+
+/* Mark as Paid button */
+.btn-settle {
+  background: var(--clr-success);
+  color: #fff;
+  padding: .35rem .85rem;
+  font-size: .8rem; font-weight: 700;
+  border-radius: var(--radius-md);
+  white-space: nowrap;
+  transition: background .15s, transform .1s;
 }
+.btn-settle:hover { background: #047857; transform: translateY(-1px); }
+.btn-settle:active { transform: translateY(0); }
+
 .settled-message { color: var(--clr-success); font-weight: 600; padding: 1rem 0; }
+
+/* ── Snackbar ─────────────────────────────────────────────────────────────── */
+.snackbar-container {
+  position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+  z-index: 300; pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; gap: .5rem;
+}
+.snackbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem;
+  background: #1E293B;
+  color: #fff;
+  border-radius: var(--radius-lg);
+  padding: .85rem 1.1rem .7rem;
+  box-shadow: var(--shadow-lg);
+  min-width: 280px; max-width: min(520px, calc(100vw - 2rem));
+  pointer-events: all;
+  opacity: 0; transform: translateY(12px);
+  transition: opacity .25s, transform .25s;
+  overflow: hidden;
+  position: relative;
+}
+.snackbar-show { opacity: 1; transform: translateY(0); }
+
+.snackbar-message { font-size: .9rem; font-weight: 500; flex: 1; }
+
+.snackbar-right { display: flex; align-items: center; gap: .75rem; flex-shrink: 0; }
+
+.snackbar-undo {
+  font-size: .85rem; font-weight: 800;
+  color: #A5B4FC; /* indigo-300 */
+  padding: .25rem .5rem;
+  border-radius: var(--radius-sm);
+  transition: background .15s, color .15s;
+  white-space: nowrap;
+}
+.snackbar-undo:hover { background: rgba(165,180,252,.15); color: #C7D2FE; }
+
+/* Progress bar drains over the snackbar's lifetime */
+.snackbar-progress {
+  position: absolute; bottom: 0; left: 0;
+  height: 3px;
+  width: 100%;
+  background: #A5B4FC;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  transition: width linear;
+}
+
+/* Brand name size — shrink on very small screens */
+@media (max-width: 480px) {
+  .brand-name { font-size: 1rem; }
+  .snackbar { min-width: unset; }
+}
 
 /* ─────────────────────────────────────────────────────────────────────────
    SUMMARY TAB

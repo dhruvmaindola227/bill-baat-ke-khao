@@ -16,8 +16,8 @@ export class HomeView {
         <header class="page-header">
           <div class="header-inner container">
             <div class="brand">
-              <div class="brand-icon">S</div>
-              <span class="brand-name">Splid</span>
+              <div class="brand-icon">B</div>
+              <span class="brand-name">Bill Baat Ke Khao</span>
             </div>
             <div class="header-actions">
               <label class="btn btn-ghost btn-sm" title="Import backup">
