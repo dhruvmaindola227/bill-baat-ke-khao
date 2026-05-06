@@ -341,6 +341,14 @@ input:focus, select:focus, textarea:focus {
   justify-content: flex-end;
   gap: .5rem;
 }
+.home-action-bar .btn {
+  border: 1px solid var(--clr-border-strong);
+  color: var(--clr-text);
+}
+.home-action-bar .btn:hover {
+  background: var(--clr-bg);
+  border-color: var(--clr-border-strong);
+}
 
 .home-main { padding-top: 2rem; padding-bottom: 3rem; }
 
