@@ -20,15 +20,19 @@ export class HomeView {
               <span class="brand-name">Bill Baat Ke Khao</span>
             </div>
             <div class="header-actions">
-              <label class="btn btn-ghost btn-sm" title="Import backup">
-                Import
-                <input type="file" accept=".json" id="import-input" class="sr-only">
-              </label>
-              <button class="btn btn-ghost btn-sm" id="btn-export">Export</button>
               <button class="btn btn-primary" id="btn-create-group">+ New Group</button>
             </div>
           </div>
         </header>
+        <div class="home-action-bar">
+          <div class="container">
+            <label class="btn btn-ghost btn-sm" title="Import backup">
+              Import
+              <input type="file" accept=".json" id="import-input" class="sr-only">
+            </label>
+            <button class="btn btn-ghost btn-sm" id="btn-export">Export</button>
+          </div>
+        </div>
         <main class="home-main container">
           ${groups.length === 0 ? this._emptyState() : this._groupsGrid(groups)}
         </main>

@@ -330,6 +330,18 @@ input:focus, select:focus, textarea:focus {
 /* ─────────────────────────────────────────────────────────────────────────
    HOME PAGE
    ───────────────────────────────────────────────────────────────────────── */
+.home-action-bar {
+  background: var(--clr-surface);
+  border-bottom: 1px solid var(--clr-border);
+  padding: .375rem 0;
+}
+.home-action-bar .container {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .5rem;
+}
+
 .home-main { padding-top: 2rem; padding-bottom: 3rem; }
 
 .section-header {
@@ -773,8 +785,6 @@ input:focus, select:focus, textarea:focus {
    RESPONSIVE — Mobile (max 640px) tweaks
    ───────────────────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
-  .header-actions .btn-ghost { display: none; }
-  .header-actions label.btn { padding: .35rem .65rem; }
   .form-row { grid-template-columns: 1fr; }
   .expense-row-main { flex-wrap: wrap; }
   .payment-amount { margin-left: 0; }
