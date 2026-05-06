@@ -26,10 +26,27 @@ const AppService = {
   },
 
   createGroup(params) {
-    const group = createGroup(params);
+    const trimmed = params.name.trim();
+    if (this._data.groups.some(g => g.name.toLowerCase() === trimmed.toLowerCase())) {
+      throw new Error(`A group named "${trimmed}" already exists.`);
+    }
+    const group = createGroup({ ...params, name: trimmed });
     this._data.groups.unshift(group);
     this._save();
     return group;
+  },
+
+  updateGroup(id, { name }) {
+    const trimmed = name.trim();
+    if (!trimmed) throw new Error('Group name cannot be empty.');
+    const duplicate = this._data.groups.find(
+      g => g.id !== id && g.name.toLowerCase() === trimmed.toLowerCase()
+    );
+    if (duplicate) throw new Error(`A group named "${trimmed}" already exists.`);
+    const group = this.getGroup(id);
+    if (!group) throw new Error('Group not found.');
+    group.name = trimmed;
+    this._save();
   },
 
   deleteGroup(id) {
@@ -51,6 +68,21 @@ const AppService = {
     group.people.push(person);
     this._save();
     return person;
+  },
+
+  updatePerson(groupId, personId, name) {
+    const group = this.getGroup(groupId);
+    if (!group) throw new Error('Group not found.');
+    const trimmed = name.trim();
+    if (!trimmed) throw new Error('Name cannot be empty.');
+    const duplicate = group.people.find(
+      p => p.id !== personId && p.name.toLowerCase() === trimmed.toLowerCase()
+    );
+    if (duplicate) throw new Error(`"${trimmed}" is already in this group.`);
+    const person = group.people.find(p => p.id === personId);
+    if (!person) throw new Error('Person not found.');
+    person.name = trimmed;
+    this._save();
   },
 
   removePerson(groupId, personId) {
@@ -75,6 +107,21 @@ const AppService = {
     group.expenses.push(expense);
     this._save();
     return expense;
+  },
+
+  updateExpense(groupId, expenseId, params) {
+    const group = this.getGroup(groupId);
+    if (!group) throw new Error('Group not found.');
+    if (params.splitBetween.length === 0) throw new Error('Select at least one person to split with.');
+    if (params.amount <= 0) throw new Error('Amount must be greater than 0.');
+    const expense = group.expenses.find(e => e.id === expenseId);
+    if (!expense) throw new Error('Expense not found.');
+    expense.title = params.title.trim();
+    expense.amount = parseFloat(params.amount);
+    expense.paidBy = params.paidBy;
+    expense.date = params.date;
+    expense.splitBetween = [...params.splitBetween];
+    this._save();
   },
 
   deleteExpense(groupId, expenseId) {

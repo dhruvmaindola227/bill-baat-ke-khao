@@ -60,43 +60,62 @@ export const ExpensesTab = {
         </div>
         <div class="expense-row-foot">
           <span class="expense-date">${formatDate(e.date)}</span>
-          <button class="btn-text-danger js-delete-expense" data-id="${escapeHtml(e.id)}"
-                  aria-label="Delete expense ${escapeHtml(e.title)}">Delete</button>
+          <div class="expense-actions">
+            <button class="btn-text-primary js-edit-expense" data-id="${escapeHtml(e.id)}"
+                    aria-label="Edit expense ${escapeHtml(e.title)}">Edit</button>
+            <button class="btn-text-danger js-delete-expense" data-id="${escapeHtml(e.id)}"
+                    aria-label="Delete expense ${escapeHtml(e.title)}">Delete</button>
+          </div>
         </div>
       </div>
     `;
   },
 
-  _showAddModal(group, svc, router) {
-    const personOptions = group.people
-      .map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`)
-      .join('');
+  // ── Shared expense form ───────────────────────────────────────────────────
 
-    const splitCheckboxes = group.people.map(p => `
-      <label class="checkbox-label">
-        <input type="checkbox" name="split" value="${escapeHtml(p.id)}" checked>
-        <span>${escapeHtml(p.name)}</span>
-      </label>
-    `).join('');
+  _buildFormHTML(group, expense = null) {
+    const isEdit = expense !== null;
+    const personOptions = group.people.map(p =>
+      `<option value="${escapeHtml(p.id)}"
+               ${isEdit && expense.paidBy === p.id ? 'selected' : ''}
+               >${escapeHtml(p.name)}</option>`
+    ).join('');
 
-    Modal.show(`
-      <div class="modal-header"><h2>Add Expense</h2></div>
-      <form id="form-add-expense" class="modal-form">
+    const splitCheckboxes = group.people.map(p => {
+      const checked = !isEdit || expense.splitBetween.includes(p.id);
+      return `
+        <label class="checkbox-label">
+          <input type="checkbox" name="split" value="${escapeHtml(p.id)}" ${checked ? 'checked' : ''}>
+          <span>${escapeHtml(p.name)}</span>
+        </label>
+      `;
+    }).join('');
+
+    return `
+      <div class="modal-header">
+        <h2>${isEdit ? 'Edit Expense' : 'Add Expense'}</h2>
+      </div>
+      <form id="form-expense" class="modal-form">
         <div class="form-group">
           <label for="exp-title">Title</label>
-          <input type="text" id="exp-title" placeholder="e.g. Dinner" required maxlength="80" autocomplete="off">
+          <input type="text" id="exp-title" placeholder="e.g. Dinner"
+                 required maxlength="80" autocomplete="off"
+                 value="${isEdit ? escapeHtml(expense.title) : ''}">
         </div>
         <div class="form-row">
           <div class="form-group">
             <label for="exp-amount">Amount</label>
             <div class="input-prefix-wrap">
               <span class="input-prefix">${escapeHtml(group.symbol)}</span>
-              <input type="number" id="exp-amount" min="0.01" step="0.01" placeholder="0.00" required>
+              <input type="number" id="exp-amount" min="0.01" step="0.01"
+                     placeholder="0.00" required
+                     value="${isEdit ? expense.amount : ''}">
             </div>
           </div>
           <div class="form-group">
             <label for="exp-date">Date</label>
-            <input type="date" id="exp-date" value="${today()}" required>
+            <input type="date" id="exp-date"
+                   value="${isEdit ? expense.date : today()}" required>
           </div>
         </div>
         <div class="form-group">
@@ -106,16 +125,21 @@ export const ExpensesTab = {
         <div class="form-group">
           <label>Split between</label>
           <div class="checkbox-group" id="split-group">
-            <button type="button" class="btn-text-sm js-check-all">Select all</button>
+            <button type="button" class="btn-text-sm js-check-all">Toggle all</button>
             ${splitCheckboxes}
           </div>
         </div>
         <div class="form-actions">
           <button type="button" class="btn btn-secondary" id="btn-cancel-expense">Cancel</button>
-          <button type="submit" class="btn btn-primary">Add Expense</button>
+          <button type="submit" class="btn btn-primary">${isEdit ? 'Save Changes' : 'Add Expense'}</button>
         </div>
       </form>
-    `);
+    `;
+  },
+
+  _openExpenseModal(group, svc, expense = null) {
+    const isEdit = expense !== null;
+    Modal.show(this._buildFormHTML(group, expense));
 
     document.getElementById('btn-cancel-expense').addEventListener('click', () => Modal.hide());
 
@@ -125,39 +149,55 @@ export const ExpensesTab = {
       boxes.forEach(b => { b.checked = !allChecked; });
     });
 
-    document.getElementById('form-add-expense').addEventListener('submit', e => {
+    document.getElementById('form-expense').addEventListener('submit', e => {
       e.preventDefault();
-      const title = document.getElementById('exp-title').value;
-      const amount = parseFloat(document.getElementById('exp-amount').value);
-      const paidBy = document.getElementById('exp-paid-by').value;
-      const date = document.getElementById('exp-date').value;
-      const splitBetween = [...document.querySelectorAll('#split-group input:checked')].map(b => b.value);
+      const params = {
+        title:        document.getElementById('exp-title').value,
+        amount:       parseFloat(document.getElementById('exp-amount').value),
+        paidBy:       document.getElementById('exp-paid-by').value,
+        date:         document.getElementById('exp-date').value,
+        splitBetween: [...document.querySelectorAll('#split-group input:checked')].map(b => b.value),
+      };
 
       try {
-        svc.addExpense(group.id, { title, amount, paidBy, date, splitBetween });
+        if (isEdit) {
+          svc.updateExpense(group.id, expense.id, params);
+          Toast.show('Expense updated.', 'success');
+        } else {
+          svc.addExpense(group.id, params);
+          Toast.show('Expense added.', 'success');
+        }
         Modal.hide();
-        Toast.show('Expense added.', 'success');
       } catch (err) {
         Toast.show(err.message, 'error');
       }
     });
   },
 
+  // ── Event binding ─────────────────────────────────────────────────────────
+
   _bind(container, group, svc, router) {
     container.addEventListener('click', async e => {
       if (e.target.closest('#btn-add-expense')) {
-        this._showAddModal(group, svc, router);
+        this._openExpenseModal(group, svc, null);
         return;
       }
-      const del = e.target.closest('.js-delete-expense');
-      if (del) {
-        const expId = del.dataset.id;
-        const exp = group.expenses.find(x => x.id === expId);
+
+      const editBtn = e.target.closest('.js-edit-expense');
+      if (editBtn) {
+        const exp = group.expenses.find(x => x.id === editBtn.dataset.id);
+        if (exp) this._openExpenseModal(group, svc, exp);
+        return;
+      }
+
+      const delBtn = e.target.closest('.js-delete-expense');
+      if (delBtn) {
+        const exp = group.expenses.find(x => x.id === delBtn.dataset.id);
         const ok = await Modal.confirm(
           `Delete expense <strong>${escapeHtml(exp?.title ?? '')}</strong>?`, true
         );
         if (ok) {
-          svc.deleteExpense(group.id, expId);
+          svc.deleteExpense(group.id, delBtn.dataset.id);
           Toast.show('Expense deleted.', 'info');
         }
       }

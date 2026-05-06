@@ -164,6 +164,22 @@ h3 { font-size: 1rem; font-weight: 600; }
 }
 .btn-text-danger:hover { background: var(--clr-danger-bg); }
 
+.btn-text-primary {
+  font-size: .8rem; font-weight: 600; color: var(--clr-primary);
+  padding: .2rem .4rem; border-radius: var(--radius-sm);
+  transition: background .15s;
+}
+.btn-text-primary:hover { background: var(--clr-primary-light); }
+
+.btn-icon-edit {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: .9rem; color: var(--clr-text-muted);
+  transition: background .15s, color .15s;
+  flex-shrink: 0;
+}
+.btn-icon-edit:hover { background: var(--clr-primary-light); color: var(--clr-primary); }
+
 .btn-back {
   display: inline-flex; align-items: center; gap: .3rem;
   padding: .4rem .75rem; border-radius: var(--radius-md);
@@ -415,14 +431,17 @@ input:focus, select:focus, textarea:focus {
   font-size: .82rem; font-weight: 600;
   white-space: nowrap;
 }
-.chip-remove {
+.chip-action {
   width: 16px; height: 16px; border-radius: 50%;
   display: grid; place-items: center;
-  font-size: .75rem; color: var(--clr-primary);
+  font-size: .75rem;
   transition: background .15s;
-  line-height: 1;
+  line-height: 1; flex-shrink: 0;
 }
-.chip-remove:hover { background: rgba(79,70,229,.25); }
+.chip-edit-btn { color: var(--clr-primary); }
+.chip-edit-btn:hover { background: rgba(79,70,229,.25); }
+.chip-remove { color: var(--clr-primary); }
+.chip-remove:hover { background: rgba(220,38,38,.2); color: var(--clr-danger); }
 .chip-add {
   background: var(--clr-bg);
   border: 1.5px dashed var(--clr-border-strong);
@@ -509,6 +528,10 @@ input:focus, select:focus, textarea:focus {
   border-top: 1px solid var(--clr-border);
 }
 .expense-date { font-size: .8rem; color: var(--clr-text-muted); }
+.expense-actions { display: flex; align-items: center; gap: .25rem; }
+
+/* Header spacer keeps title centered */
+.header-spacer { width: 80px; flex-shrink: 0; }
 
 /* ─────────────────────────────────────────────────────────────────────────
    SETTLE TAB

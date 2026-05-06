@@ -122,10 +122,14 @@ export class HomeView {
       const code = sel.value;
       const symbol = sel.options[sel.selectedIndex].dataset.symbol;
       if (!name) return;
-      this._svc.createGroup({ name, currency: code, symbol });
-      Modal.hide();
-      Toast.show(`Group "${name}" created.`, 'success');
-      this.render();
+      try {
+        this._svc.createGroup({ name, currency: code, symbol });
+        Modal.hide();
+        Toast.show(`Group "${name}" created.`, 'success');
+        this.render();
+      } catch (err) {
+        Toast.show(err.message, 'error');
+      }
     });
   }
 

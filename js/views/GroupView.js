@@ -25,7 +25,6 @@ export class GroupView {
     this._groupId = groupId;
     this._tab = tab;
 
-    // Unsubscribe previous listener before re-mounting
     this._unsubscribe?.();
     this._unsubscribe = EventBus.on('data:changed', () => this._onDataChanged());
 
@@ -38,11 +37,14 @@ export class GroupView {
     const group = this._svc.getGroup(this._groupId);
     if (!group) { this._router.navigate('/'); return; }
 
-    // Patch people strip in-place to avoid scroll reset
+    // Patch header title in-place
+    const titleEl = this._el.querySelector('.group-page-title');
+    if (titleEl) titleEl.textContent = group.name;
+
+    // Patch people strip in-place (avoids scroll reset)
     const strip = this._el.querySelector('#people-strip');
     if (strip) strip.innerHTML = this._peopleChips(group);
 
-    // Re-mount the active tab
     this._mountTab(group);
   }
 
@@ -54,9 +56,10 @@ export class GroupView {
             <button class="btn btn-ghost btn-sm" id="btn-back">← Back</button>
             <div class="group-title-wrap">
               <h1 class="group-page-title">${escapeHtml(group.name)}</h1>
+              <button class="btn-icon-edit js-edit-group-name" title="Rename group" aria-label="Rename group">✎</button>
               <span class="currency-tag">${escapeHtml(group.currency)} ${escapeHtml(group.symbol)}</span>
             </div>
-            <div style="width:80px"></div>
+            <div class="header-spacer"></div>
           </div>
         </header>
 
@@ -92,8 +95,10 @@ export class GroupView {
     const chips = group.people.map(p => `
       <span class="person-chip">
         ${escapeHtml(p.name)}
-        <button class="chip-remove js-remove-person" data-id="${escapeHtml(p.id)}"
-                aria-label="Remove ${escapeHtml(p.name)}">×</button>
+        <button class="chip-action chip-edit-btn js-edit-person" data-id="${escapeHtml(p.id)}"
+                title="Rename ${escapeHtml(p.name)}" aria-label="Rename ${escapeHtml(p.name)}">✎</button>
+        <button class="chip-action chip-remove js-remove-person" data-id="${escapeHtml(p.id)}"
+                title="Remove ${escapeHtml(p.name)}" aria-label="Remove ${escapeHtml(p.name)}">×</button>
       </span>
     `).join('');
     return chips + `<button class="person-chip chip-add js-add-person">+ Add</button>`;
@@ -106,13 +111,45 @@ export class GroupView {
     tabs[this._tab]?.mount(inner, group, this._svc, this._router);
   }
 
+  // ── Modals ────────────────────────────────────────────────────────────────
+
+  _showRenameGroupModal(group) {
+    Modal.show(`
+      <div class="modal-header"><h2>Rename Group</h2></div>
+      <form id="form-rename-group" class="modal-form">
+        <div class="form-group">
+          <label for="grp-name-edit">Group Name</label>
+          <input type="text" id="grp-name-edit" required maxlength="60"
+                 autocomplete="off" value="${escapeHtml(group.name)}">
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-rename">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    `);
+    document.getElementById('btn-cancel-rename').addEventListener('click', () => Modal.hide());
+    document.getElementById('form-rename-group').addEventListener('submit', e => {
+      e.preventDefault();
+      const name = document.getElementById('grp-name-edit').value;
+      try {
+        this._svc.updateGroup(group.id, { name });
+        Modal.hide();
+        Toast.show('Group renamed.', 'success');
+      } catch (err) {
+        Toast.show(err.message, 'error');
+      }
+    });
+  }
+
   _showAddPersonModal(group) {
     Modal.show(`
       <div class="modal-header"><h2>Add Person</h2></div>
       <form id="form-add-person" class="modal-form">
         <div class="form-group">
           <label for="person-name">Name</label>
-          <input type="text" id="person-name" placeholder="e.g. Rohan" required maxlength="40" autocomplete="off">
+          <input type="text" id="person-name" placeholder="e.g. Rohan"
+                 required maxlength="40" autocomplete="off">
         </div>
         <div class="form-actions">
           <button type="button" class="btn btn-secondary" id="btn-cancel-person">Cancel</button>
@@ -134,6 +171,37 @@ export class GroupView {
     });
   }
 
+  _showEditPersonModal(group, personId) {
+    const person = group.people.find(p => p.id === personId);
+    if (!person) return;
+    Modal.show(`
+      <div class="modal-header"><h2>Rename Person</h2></div>
+      <form id="form-edit-person" class="modal-form">
+        <div class="form-group">
+          <label for="person-name-edit">Name</label>
+          <input type="text" id="person-name-edit" required maxlength="40"
+                 autocomplete="off" value="${escapeHtml(person.name)}">
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-edit-person">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    `);
+    document.getElementById('btn-cancel-edit-person').addEventListener('click', () => Modal.hide());
+    document.getElementById('form-edit-person').addEventListener('submit', e => {
+      e.preventDefault();
+      const name = document.getElementById('person-name-edit').value;
+      try {
+        this._svc.updatePerson(group.id, personId, name);
+        Modal.hide();
+        Toast.show(`Renamed to ${name.trim()}.`, 'success');
+      } catch (err) {
+        Toast.show(err.message, 'error');
+      }
+    });
+  }
+
   async _removePerson(group, personId) {
     const person = group.people.find(p => p.id === personId);
     if (!person) return;
@@ -149,12 +217,20 @@ export class GroupView {
     }
   }
 
+  // ── Event binding ─────────────────────────────────────────────────────────
+
   _bind() {
     this._el.addEventListener('click', e => {
       if (e.target.closest('#btn-back')) {
         this._unsubscribe?.();
         this._unsubscribe = null;
         this._router.navigate('/');
+        return;
+      }
+
+      if (e.target.closest('.js-edit-group-name')) {
+        const group = this._svc.getGroup(this._groupId);
+        if (group) this._showRenameGroupModal(group);
         return;
       }
 
@@ -175,6 +251,13 @@ export class GroupView {
       if (e.target.closest('.js-add-person')) {
         const group = this._svc.getGroup(this._groupId);
         if (group) this._showAddPersonModal(group);
+        return;
+      }
+
+      const editPersonBtn = e.target.closest('.js-edit-person');
+      if (editPersonBtn) {
+        const group = this._svc.getGroup(this._groupId);
+        if (group) this._showEditPersonModal(group, editPersonBtn.dataset.id);
         return;
       }
 
