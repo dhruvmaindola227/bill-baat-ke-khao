@@ -129,6 +129,8 @@ export const SettleTab = {
       const btn = e.target.closest('.js-mark-paid');
       if (!btn) return;
 
+      e.stopImmediatePropagation();
+
       const { from, to, amount, fromName, toName } = btn.dataset;
       const parsedAmount = parseFloat(amount);
 

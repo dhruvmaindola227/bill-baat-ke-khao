@@ -16,6 +16,7 @@ export class GroupView {
     this._groupId = null;
     this._tab = 'expenses';
     this._unsubscribe = null;
+    this._bindController = null;
   }
 
   render(groupId, tab = 'expenses') {
@@ -28,9 +29,12 @@ export class GroupView {
     this._unsubscribe?.();
     this._unsubscribe = EventBus.on('data:changed', () => this._onDataChanged());
 
+    this._bindController?.abort();
+    this._bindController = new AbortController();
+
     this._el.innerHTML = this._template(group);
     this._mountTab(group);
-    this._bind();
+    this._bind(this._bindController.signal);
   }
 
   _onDataChanged() {
@@ -219,7 +223,7 @@ export class GroupView {
 
   // ── Event binding ─────────────────────────────────────────────────────────
 
-  _bind() {
+  _bind(signal) {
     this._el.addEventListener('click', e => {
       if (e.target.closest('#btn-back')) {
         this._unsubscribe?.();
@@ -266,6 +270,6 @@ export class GroupView {
         const group = this._svc.getGroup(this._groupId);
         if (group) this._removePerson(group, removeBtn.dataset.id);
       }
-    });
+    }, { signal });
   }
 }
